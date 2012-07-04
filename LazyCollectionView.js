@@ -9,7 +9,7 @@ var get = Ember.get, set = Ember.set, fmt = Ember.String.fmt;
  * Distributed under MIT license.
  * All rights reserved.
  *
- * This graphical componant it's strongly inspired by the SlickGrid v2.0 JQuery Plugin 
+ * This graphical component it's strongly inspired by the Plugin JQuery SlickGrid v2.0
  * originaly written by Michael Leibman. It's available here:
  * https://github.com/mleibman/SlickGrid
  *
@@ -19,7 +19,7 @@ Em.LazyCollectionView = Em.CollectionView.extend({
 
     scrollbarDimensions:null,
     maxSupportedCssHeight:null,
-    
+
     // TODO : Merge it
  	th:null,   // virtual height
     h:null,    // real scrollable height
