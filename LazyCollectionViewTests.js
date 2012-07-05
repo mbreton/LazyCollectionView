@@ -37,7 +37,7 @@ App.ItemView = Em.View.extend({
 });
 
 test("a basic test example", function() {
-	Em.LazyScrollCollectionView.create({
+	Em.LazyCollectionView.create({
 		content : buildContent(500, 1),
 		itemViewClass : App.ItemView,
 		rowHeight: 100,
