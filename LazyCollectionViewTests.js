@@ -1,5 +1,9 @@
 var set = Ember.set, get = Ember.get, setPath = Ember.setPath;
 
+Em.ENV.RAISE_ON_DEPRECATION = true;
+Em.ENV.CP_DEFAULT_CACHEABLE = true;
+Em.ENV.VIEW_PRESERVES_CONTEXT = true;
+
 function buildContent (nbElement, start){
 	var items = [];
 
@@ -22,7 +26,7 @@ App.ItemView = Em.View.extend({
 	bar : function (){
 		return Em.View.extend({
 			templateName:"bar-tmpl",
-			text : (this.item.index % 10 == 0) ? 
+			text : (this.item && this.item.index % 10 == 0) ? 
 						"This Item is divisable by 10" : 
 						"This Item is not divisable by 10"
 		});
@@ -36,11 +40,56 @@ App.ItemView = Em.View.extend({
 	}
 });
 
-test("a basic test example", function() {
-	Em.LazyCollectionView.create({
-		content : buildContent(500, 1),
-		itemViewClass : App.ItemView,
-		rowHeight: 100,
-		dataFieldName : 'item'
-	}).appendTo('#qunit-fixture');
+
+
+module("LazyCollectionView Tests", {
+		setup: function() {
+			console.log('initialisation');
+		    $('#qunit-header').hide();
+			$('#qunit-banner').hide();
+			$('#qunit-testrunner-toolbar').hide();
+			$('#qunit-userAgent').hide();
+			$('#qunit-tests').hide();
+			$('#qunit-testresult').hide();
+
+			window.view = Em.LazyCollectionView.create({
+				elementId:"LazyCollectionView",
+				content : [],
+				itemViewClass : App.ItemView,
+				rowHeight: 100,
+				dataFieldName : 'item'
+			});
+			/*
+			 * To be sure that ember and the componant now 
+			 * and don't defer her insertion in the Dom in
+			 * the the next runloop
+			 */
+			Ember.run(function(){ window.view.appendTo('#qunit-fixture'); });
+
+			window.$view = $('#LazyCollectionView');
+		},
+		teardown: function() {
+			console.log('fin ...');
+			$('#qunit-header').show();
+			$('#qunit-banner').show();
+			$('#qunit-testrunner-toolbar').show();
+			$('#qunit-userAgent').show();
+			$('#qunit-tests').show();
+			$('#qunit-testresult').show();
+			Ember.run(function(){view.destroy();});
+		}
+	}
+);
+
+test("LazyCollectionView is in DOM", function() {
+	equal( $view.length, 1, "The LazyCollectionView should be append to DOM");
+});
+
+test("Check if when we set a list to component the rows are created", function() {
+	Em.run(function(){
+		view.set('content', buildContent(200));
+	})
+	equal(view.content.length, 200, "The content's component is well setted");
+	ok(view.get('childViews').length > 3, "The ember rows are added" );
+	ok(view.get('childViews').length < 100, "The component have'nt create all row views for each item of the list" );
 });

@@ -139,8 +139,8 @@ Em.LazyCollectionView = Em.CollectionView.extend({
     },
 
     arrayDidChange: function(content, start, removed, added) {
-        console.log("arrayDidChange (content.length :"+this.contentLength()+", "+start+" , "+removed+", "+added+")");
         if (!this.initialized) return;
+        console.log("arrayDidChange (content.length :"+this.contentLength()+", "+start+" , "+removed+", "+added+")");
         var itemViewClass = get(this, 'itemViewClass'),
             childViews = get(this, 'childViews'),
             view, item, idx, len, itemTagName;
