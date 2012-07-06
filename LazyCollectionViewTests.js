@@ -23,14 +23,12 @@ App.ItemView = Em.View.extend({
 	classNames:['lazy-item'],
 	top:null,
 	item : null,
-	bar : function (){
-		return Em.View.extend({
-			templateName:"bar-tmpl",
-			text : (this.item && this.item.index % 10 == 0) ? 
-						"This Item is divisable by 10" : 
-						"This Item is not divisable by 10"
-		});
-	}.property('item.i').cacheable(),
+	bar : Em.View.extend({
+		templateName:"bar-tmpl",
+		text : (this.item && this.item.index % 10 == 0) ? 
+					"This Item is divisable by 10" : 
+					"This Item is not divisable by 10"
+	}),
 	updateTopCssPosition:function(){
 		this.$().css('top', this.top);
 	}.observes("top"),
@@ -52,6 +50,7 @@ module("LazyCollectionView Tests", {
 			$('#qunit-tests').hide();
 			$('#qunit-testresult').hide();
 
+			Ember.run.begin();
 			window.view = Em.LazyCollectionView.create({
 				elementId:"LazyCollectionView",
 				content : [],
@@ -64,7 +63,8 @@ module("LazyCollectionView Tests", {
 			 * and don't defer her insertion in the Dom in
 			 * the the next runloop
 			 */
-			Ember.run(function(){ window.view.appendTo('#qunit-fixture'); });
+			window.view.appendTo('#qunit-fixture');
+			Ember.tun.end();
 
 			window.$view = $('#LazyCollectionView');
 		},

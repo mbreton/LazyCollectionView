@@ -1,26 +1,10 @@
 var get = Ember.get, set = Ember.set, fmt = Ember.String.fmt;
 
-/**
- * @license
- * (c) 2009-2012 Mathieu Breton
- * mbreton{at}xebia{dot}com
- * https://github.com/mbreton/LazyCollectionView
- *
- * Distributed under MIT license.
- * All rights reserved.
- *
- * This graphical component it's strongly inspired by the Plugin JQuery SlickGrid v2.0
- * originaly written by Michael Leibman. It's available here:
- * https://github.com/mleibman/SlickGrid
- *
- * 
- */
 Em.LazyCollectionView = Em.CollectionView.extend({
 
     scrollbarDimensions:null,
     maxSupportedCssHeight:null,
-
-    // TODO : Merge it
+    // TODO : A fusioner
  	th:null,   // virtual height
     h:null,    // real scrollable height
 
@@ -54,7 +38,18 @@ Em.LazyCollectionView = Em.CollectionView.extend({
     /*****************************
      * Initialization ...
      */
+
+    nbProperties:function (obj){
+        var i=0;
+        for (var p in obj){
+            i++;
+        }
+        return i;
+    },
+
     init:function (){
+        console.log('init de LazyCollection, taille du cache :'+this.rowsCache.length);
+        console.log('taille du renderedRows :'+this.nbProperties(this.renderedRows));
         var ret = this._super();
         this.createCssRules();
         this.maxSupportedCssHeight = this.getMaxSupportedCssHeight();
@@ -120,7 +115,8 @@ Em.LazyCollectionView = Em.CollectionView.extend({
     },
 
     contentLength:function(){
-        return this.content ? this.content.length : 0;
+        console.log('contentLength -> content != null -> '+ this.content != null);
+        return this.content != null ? this.content.length : 0;
     },
 
     contentAt:function (idx){
@@ -130,17 +126,32 @@ Em.LazyCollectionView = Em.CollectionView.extend({
     arrayWillChange: function(content, start, removedCount) {
         console.log("-> arrayWillChange (content.length :"+this.contentLength()+", "+start+" , "+removedCount+")");
 
+        console.log('taille du cache :'+this.rowsCache.length);
+        console.log('taille du renderedRows :'+this.nbProperties(this.renderedRows));
+
         var childViews = get(this, 'childViews'), len = get(childViews, 'length');
+        var nextContentLength = this.contentLength() - removedCount;
+
+        if (len > nextContentLength){
+            console.log('len > contentLength');
+            this.updateRowCount((this.contentLength() - removedCount))
+            /*this.deRenderRows({
+                top : 0,
+                bottom : this.contentLength()-1
+            });*/
+        }
 
         /*if (removedCount === this.contentLength()) {
             this.deRenderRows();
-        }
-        this.updateRowCount();*/
+        }*/
+        //this.updateRowCount();
     },
 
     arrayDidChange: function(content, start, removed, added) {
         if (!this.initialized) return;
         console.log("arrayDidChange (content.length :"+this.contentLength()+", "+start+" , "+removed+", "+added+")");
+        console.log('taille du cache :'+this.rowsCache.length);
+        console.log('taille du renderedRows :'+this.nbProperties(this.renderedRows));
         var itemViewClass = get(this, 'itemViewClass'),
             childViews = get(this, 'childViews'),
             view, item, idx, len, itemTagName;
@@ -149,8 +160,8 @@ Em.LazyCollectionView = Em.CollectionView.extend({
             itemViewClass = Ember.getPath(itemViewClass);
         }
 
-        this.renderRange(true);
         this.updateRowCount();
+        this.renderRange();
     },
 
     getCanvasWidth:function() {
@@ -204,8 +215,8 @@ Em.LazyCollectionView = Em.CollectionView.extend({
         this.updateRowCount();
     },
 
-    updateRowCount:function() {
-        this.numberOfRows = this.contentLength();
+    updateRowCount:function(givenLength) {
+        this.numberOfRows = givenLength || this.contentLength();
 
         var oldViewportHasVScroll = this.viewportHasVScroll;
         // with autoHeight, we do not need to accommodate the vertical scroll bar
@@ -244,18 +255,21 @@ Em.LazyCollectionView = Em.CollectionView.extend({
         var buffer = Math.round(this.viewportH / this.rowHeight);
         var minBuffer = 3;
 
-        if (this.scrollDir == -1) {
-            range.top -= buffer;
-            range.bottom + buffer;
-        } else if (this.scrollDir == 1) {
-            range.top -= buffer;
-            range.bottom += buffer;
-        } else {
-            range.top -= minBuffer;
-            range.bottom += minBuffer;
+        if (this.viewportHasVScroll){
+            console.log('viewportHasVScroll -> viewportHasVScroll');
+            if (this.scrollDir == -1) {
+                range.top -= buffer;
+                range.bottom + buffer;
+            } else if (this.scrollDir == 1) {
+                range.top -= buffer;
+                range.bottom += buffer;
+            } else {
+                range.top -= minBuffer;
+                range.bottom += minBuffer;
+            }
         }
         range.top = Math.max(0, range.top );
-        range.bottom = Math.min(this.contentLength(), range.bottom);
+        range.bottom = Math.min(this.contentLength()-1, range.bottom);
 
         return range;
     },
@@ -299,13 +313,18 @@ Em.LazyCollectionView = Em.CollectionView.extend({
         if (!this.initialized) {
             return;
         }
+        console.log('renderRange');
         var renderedRange = this.getRenderedRange();
 
         // remove unused rows
-        this.deRenderRows(withOutBuffer ? null : renderedRange);
+        this.deRenderRows(renderedRange);
 
         // add new rows
         this.renderRows(renderedRange);
+
+
+        console.log('taille du cache :'+this.rowsCache.length);
+        console.log('taille du renderedRows :'+this.nbProperties(this.renderedRows));
 
         this.lastRenderedScrollTop = this.scrollTop;
     },
@@ -333,6 +352,8 @@ Em.LazyCollectionView = Em.CollectionView.extend({
                 rowView = this.createChildView(this.itemViewClass, properties);
                 this.get('childViews').pushObject (rowView);
             } else{
+                console.log('Une view à été dé-caché');
+                properties['isVisible'] = true;
                 rowView.setProperties(properties);
             }
 
@@ -345,20 +366,30 @@ Em.LazyCollectionView = Em.CollectionView.extend({
     },
 
     deRenderRows:function(rangeToKeep) {
-        if (rangeToKeep) console.log('deRender top:'+rangeToKeep.top+ " bottom:"+rangeToKeep.bottom);
-        for (var i in this.content) {
-            if (Em.none(rangeToKeep) || i < rangeToKeep.top || i > rangeToKeep.bottom) {
+        console.log('deRender top:'+rangeToKeep.top+ " bottom:"+rangeToKeep.bottom);
+        for (var i in this.renderedRows) {
+            if (i < rangeToKeep.top || i > rangeToKeep.bottom) {
                 this.deRenderRow(i);
             }
         }
+    },
+
+    deRenderAllRows:function (){
+        for (var rowIdx in this.renderedRows){
+            console.log('deRenderAllRows idx:'+rowIdx);
+            this.deRenderRow(rowIdx);
+        }
+        console.log('deRenderAllRows taille de fin:'+this.nbProperties(this.renderedRows));
     },
 
     deRenderRow:function(rowIdx) {
         var rowView = this.renderedRows[rowIdx];
         if (!rowView) { return; }
 
-        this.rowsCache.push(rowView);
+        console.log('La view '+rowIdx+' à été caché');
         delete this.renderedRows[rowIdx];
+        rowView.set('isVisible', false);
+        this.rowsCache.push(rowView);
         if (this.deRenderedHook){
             Em.run.later(rowView, this.deRenderedHook, 50);
         }
@@ -366,19 +397,24 @@ Em.LazyCollectionView = Em.CollectionView.extend({
 
     destroy:function() {
         this._super();
-        this.cleanCache();
-        $(window).off("scroll", this.handleScroll);
+        this.deRenderAllRows();
+        this.clearCache();
         this.$style.remove();
         this.stylesheet = null;
         this.$style = null;
+        console.log('Destroy de LazyCollection, taille du cache :'+this.rowsCache.length);
+        console.log('taille du renderedRows :'+this.nbProperties(this.renderedRows));
     },
 
-    cleanCache:function (){
+    clearCache:function (){
         var self = this, childViews = get(this, 'childViews');
-        this.rowsCache.forEach(function (row, idx) {
-            row.destroy();
-            childViews.removeObject(row);
-            delete self.rowsCache[idx];
-        });
+
+        for (var i = this.rowsCache.length-1; i >=0; i-- ){
+            childViews.removeObject(this.rowsCache[i]);
+            this.rowsCache[i].destroy();
+            this.rowsCache.removeAt(i);
+            console.log('clearCache idx:'+i);
+        }
+        console.log('clearCache à la fin taille:'+this.rowsCache.length);
     }
 });
